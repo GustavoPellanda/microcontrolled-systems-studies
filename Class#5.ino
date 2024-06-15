@@ -11,13 +11,17 @@ public:
   Button(byte p) : pin(p){
     pinMode(pin, INPUT_PULLUP);
   }
+
   ~Button(){}
+
   void on(){
     digitalWrite(pin, HIGH);
   }
+
   void off(){
     digitalWrite(pin, LOW);
   }
+  
   boolean isPressed(){
     return !digitalRead(pin);
   }    
