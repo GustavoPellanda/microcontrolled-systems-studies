@@ -1,8 +1,26 @@
 /* This code displays an int on a LCD Display,
 being that the int can be increased or decreased by push buttons */
 
+#include <LiquidCrystal.h>
+
 class Display {
-    // TO DO: Display code
+private:
+    LiquidCrystal lcd;
+    const int columns = 16, rows = 2;
+
+public:
+    Display(byte p1, byte p2, byte p3, byte p4, byte p5, byte p6):
+        lcd(p1, p2, p3, p4, p5, p6) {
+        lcd.begin(columns, rows);
+        lcd.setCursor(0, 0);
+    }
+
+    void printNumber(int number){
+        lcd.setCursor(0, 1);
+        lcd.print("                ");
+        lcd.setCursor(0, 1);
+        lcd.print(number);
+    }
 };
 
 class ButtonCounter {
@@ -39,13 +57,14 @@ public:
 };
 
 ButtonCounter buttonCounter(6, 7);
+Display display(13, 12, 11, 10, 9, 8);
 
 void setup(){
-  Serial.begin(9600);
+
 }
 
 void loop(){
     buttonCounter.update();
-    Serial.println(buttonCounter.getCounter());
+    display.printNumber(buttonCounter.getCounter());
     delay(100);
 }
