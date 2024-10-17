@@ -1,52 +1,144 @@
 /* This program manages LED states via push buttons, 
-whereas an LCD display presents a menu for state selection.
+whereas a LCD display presents a menu for state selection.
 */
 
 #include <LiquidCrystal.h>
 
+// Saves the LCD display settings and prints a message on the display:
 class Display {
 private:
     LiquidCrystal lcd;
     const int columns = 16, rows = 2;
 
 public:
-    Display(byte p1, byte p2, byte p3, byte p4, byte p5, byte p6):
-        lcd(p1, p2, p3, p4, p5, p6) {
+    Display(byte p1, byte p2, byte p3, byte p4, byte p5, byte p6)
+        : lcd(p1, p2, p3, p4, p5, p6) {
         lcd.begin(columns, rows);
         lcd.setCursor(0, 0);
     }
 
+    void printMessage(const char* message) {
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print(message);
+    }
 };
 
-class ButtonSelector {
+// Creates the LEDs effects:
+class LEDs {
 private:
-    byte pinB1, pinB2, pinB3;
-    bool lastStateB1, lastStateB2, currentStateB1, currentStateB2;
+    byte pin1;
+    byte pin2;
 
 public:
-    ButtonCounter(byte pb1, byte pb2, byte pb3): pinB1(pb1), pinB2(pb2),  pinB2(pb3){
-        pinMode(pinB1, INPUT_PULLUP);
-        pinMode(pinB2, INPUT_PULLUP);
-        pinMode(pinB2, INPUT_PULLUP);
+    LEDs(byte p1, byte p2) : pin1(p1), pin2(p2) {
+        pinMode(pin1, OUTPUT);
+        pinMode(pin2, OUTPUT);
     }
 
-    // TO DO: return the command according to which button is pressed
-   
+    void on() {
+        digitalWrite(pin1, HIGH);
+        digitalWrite(pin2, HIGH);
+        delay(500);
+    }
+
+    void off() {
+        digitalWrite(pin1, LOW);
+        digitalWrite(pin2, LOW);
+    }
+
+    void blinkTogether() {
+        digitalWrite(pin1, HIGH);
+        digitalWrite(pin2, HIGH);
+        delay(500);
+        digitalWrite(pin1, LOW);
+        digitalWrite(pin2, LOW);
+        delay(500);
+    }
+
+    void blinkAlternately() {
+        digitalWrite(pin1, HIGH);
+        digitalWrite(pin2, LOW);
+        delay(500);
+        digitalWrite(pin1, LOW);
+        digitalWrite(pin2, HIGH);
+        delay(500);
+    }
 };
 
-    // TO DO: use the state handler to create the display menu
+// Manages the state selection of the LEDs:
+class StateHandler {
+private:
+    LEDs &ledRow;
+    Display &display;
 
-ButtonSelector buttonSelector(5, 6, 7);
+public:
+    StateHandler(LEDs& ledRow, Display& display)
+        : ledRow(ledRow), display(display) {}
+
+    void state01() {
+        ledRow.on();
+        Serial.println("State 1: LEDs ON");
+        display.printMessage("State 1: LEDs ON");
+    }
+
+    void state02() {
+        ledRow.blinkTogether();
+        Serial.println("State 2: LEDs Blinking Together");
+        display.printMessage("State 2: LEDs Blink");
+    }
+
+    void state03() {
+        ledRow.blinkAlternately();
+        Serial.println("State 3: LEDs Blinking Alternately");
+        display.printMessage("State 3: Blink Alt");
+    }
+   
+    void setState(int state) {
+        if (state == 1) state01();
+        if (state == 2) state02();
+        if (state == 3) state03();
+    }
+};
+
+// Saves button settings and returns which buttons are being pressed:
+class ButtonSelector {
+private:
+    byte pinB1;
+    bool lastButtonState;
+
+public:
+    ButtonSelector(byte pb1) : pinB1(pb1), lastButtonState(HIGH) {
+        pinMode(pinB1, INPUT_PULLUP);
+    }
+
+    bool isPressed() {
+        bool currentState = digitalRead(pinB1);
+        if (currentState == LOW && lastButtonState == HIGH) {
+            delay(50);
+            lastButtonState = currentState;
+            return true;
+        }
+        lastButtonState = currentState;
+        return false;
+    }
+};
+
+LEDs ledRow(2, 3);
+ButtonSelector buttonSelector(5);
 Display display(13, 12, 11, 10, 9, 8);
+StateHandler stateHandler(ledRow, display);
+int selection = 1;
 
-void setup(){
-
+void setup() {
+    Serial.begin(9600);
 }
 
-void loop(){
-    // TO DO:
-    // The button selector will be responsible for reading which button is pressed and informing main
-    // The state handler will change the state of the LEDs according to the return from the button selector method
-    // The display class is only responsible for managing what the display will show, nothing else.
-    // One of the buttons is up, one is down and one is select.
+void loop() {
+    if (buttonSelector.isPressed()) {
+        selection++;
+        if (selection > 3) selection = 1;
+        stateHandler.setState(selection);
+    }
+    delay(100);
 }
