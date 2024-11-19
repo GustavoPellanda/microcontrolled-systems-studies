@@ -4,6 +4,29 @@ whereas a LCD display presents a menu for state selection.
 
 #include <LiquidCrystal.h>
 
+// Saves button settings and returns which buttons are being pressed:
+class ButtonSelector {
+private:
+    byte pinB1;
+    bool lastButtonState;
+
+public:
+    ButtonSelector(byte pb1) : pinB1(pb1), lastButtonState(HIGH) {
+        pinMode(pinB1, INPUT_PULLUP);
+    }
+
+    bool isPressed() {
+        bool currentState = digitalRead(pinB1);
+        if (currentState == LOW && lastButtonState == HIGH) {
+            delay(50);
+            lastButtonState = currentState;
+            return true;
+        }
+        lastButtonState = currentState;
+        return false;
+    }
+};
+
 // Saves the LCD display settings and prints a message on the display:
 class Display {
 private:
@@ -71,63 +94,62 @@ class StateHandler {
 private:
     LEDs &ledRow;
     Display &display;
+    ButtonSelector &buttonSelector;
 
 public:
-    StateHandler(LEDs& ledRow, Display& display)
-        : ledRow(ledRow), display(display) {}
+    StateHandler(LEDs &ledRow, Display &display, ButtonSelector &buttonSelector)
+        : ledRow(ledRow), display(display), buttonSelector(buttonSelector) {}
 
     void state01() {
         ledRow.on();
         Serial.println("State 1: LEDs ON");
-        display.printMessage("State 1: LEDs ON");
+        display.printMessage("LEDs ON");
     }
 
     void state02() {
-        ledRow.blinkTogether();
         Serial.println("State 2: LEDs Blinking Together");
-        display.printMessage("State 2: LEDs Blink");
+        display.printMessage("LEDs Blinking Together");
+        while (true) {
+            ledRow.blinkTogether();
+            if (buttonSelector.isPressed()) {
+                break;
+            }
+        }
     }
 
     void state03() {
-        ledRow.blinkAlternately();
         Serial.println("State 3: LEDs Blinking Alternately");
-        display.printMessage("State 3: Blink Alt");
-    }
-   
-    void setState(int state) {
-        if (state == 1) state01();
-        if (state == 2) state02();
-        if (state == 3) state03();
-    }
-};
-
-// Saves button settings and returns which buttons are being pressed:
-class ButtonSelector {
-private:
-    byte pinB1;
-    bool lastButtonState;
-
-public:
-    ButtonSelector(byte pb1) : pinB1(pb1), lastButtonState(HIGH) {
-        pinMode(pinB1, INPUT_PULLUP);
-    }
-
-    bool isPressed() {
-        bool currentState = digitalRead(pinB1);
-        if (currentState == LOW && lastButtonState == HIGH) {
-            delay(50);
-            lastButtonState = currentState;
-            return true;
+        display.printMessage("LEDs Blinking Alternately");
+        while (true) {
+            ledRow.blinkAlternately();
+            if (buttonSelector.isPressed()) {
+                break;
+            }
         }
-        lastButtonState = currentState;
-        return false;
+    }
+
+    void setState(int state) {
+        switch (state) {
+            case 1:
+                state01();
+                break;
+            case 2:
+                state02();
+                break;
+            case 3:
+                state03();
+                break;
+            default:
+                Serial.println("Invalid state");
+                break;
+        }
     }
 };
 
 LEDs ledRow(2, 3);
 ButtonSelector buttonSelector(5);
 Display display(13, 12, 11, 10, 9, 8);
-StateHandler stateHandler(ledRow, display);
+StateHandler stateHandler(ledRow, display, buttonSelector);
 int selection = 1;
 
 void setup() {
