@@ -42,8 +42,28 @@ public:
 
     void printMessage(const char* message) {
         lcd.clear();
-        lcd.setCursor(0, 0);
-        lcd.print(message);
+        int length = strlen(message);
+
+        if (length <= columns) {
+            // Short message, fits in one line
+            lcd.setCursor(0, 0);
+            lcd.print(message);
+        } else {
+            // Long message, split into two lines
+            char line1[columns + 1] = {0};  // +1 for the null terminator
+            char line2[columns + 1] = {0};
+
+            // Copy the first part of the message to the first line
+            strncpy(line1, message, columns);
+            // Copy the remaining part to the second line
+            strncpy(line2, message + columns, columns);
+
+            // Print the two lines
+            lcd.setCursor(0, 0);
+            lcd.print(line1);
+            lcd.setCursor(0, 1);
+            lcd.print(line2);
+        }
     }
 };
 
