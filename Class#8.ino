@@ -1,6 +1,6 @@
 /* This program receives inputs from a keypad and prints them on the LCD Display.
 Requirements: The numbers inputted must be stored in a buffer.
-The buffer must be a rotational string.
+The buffer must be a rotational array.
 */
 
 #include <Keypad.h>
