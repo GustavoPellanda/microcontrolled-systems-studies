@@ -70,15 +70,59 @@ public:
 };
 
 /*
+Handles which light should be on in the stacklight.
+*/
+class StackLight {
+private:
+  byte Rpin, Ypin, Gpin;
+  unsigned long previousBlinkTime = 0;
+  const unsigned long blinkInterval = 500; // 500ms blink interval
+
+public:
+  StackLight(byte r, byte y, byte g) : Rpin(r), Ypin(y), Gpin(g) {}
+
+  void begin() {
+    pinMode(Rpin, OUTPUT);
+    pinMode(Ypin, OUTPUT);
+    pinMode(Gpin, OUTPUT);
+  }
+
+  void setRedLightOn() {
+    digitalWrite(Ypin, LOW);
+    digitalWrite(Gpin, LOW);
+    
+    // Handle blinking
+    unsigned long currentTime = millis();
+    if (currentTime - previousBlinkTime >= blinkInterval) {
+      previousBlinkTime = currentTime;
+      digitalWrite(Rpin, !digitalRead(Rpin)); // Toggle red LED
+    }
+  }
+
+  void setYellowLightOn() {
+    digitalWrite(Rpin, LOW);
+    digitalWrite(Ypin, HIGH);
+    digitalWrite(Gpin, LOW);
+  }
+
+  void setGreenLightOn() {
+    digitalWrite(Rpin, LOW);
+    digitalWrite(Ypin, LOW);
+    digitalWrite(Gpin, HIGH);
+  }
+};
+
+/*
 Handles the states of the system's operations 
 based on the temperature and humidity:
 */
 class StateHandler {
 private:
   SerialMonitorHandler &serialMonitor;
+  StackLight &stackLight;
 
 public:
-  StateHandler(SerialMonitorHandler &serialRef) : serialMonitor(serialRef) {}
+  StateHandler(SerialMonitorHandler &serialRef, StackLight &stackLightRef) : serialMonitor(serialRef), stackLight(stackLightRef) {}
 
   void analiseState(int temp, int humidity) {
     if(temp >= 30) {
@@ -96,14 +140,17 @@ public:
   }
 
   void greenOperation() {
+    stackLight.setGreenLightOn();
     serialMonitor.printState(1);
   }
 
   void yellowOperation() {
+    stackLight.setYellowLightOn();
     serialMonitor.printState(2);
   }
 
   void redAlert() {
+    stackLight.setRedLightOn();
     serialMonitor.printState(3);
   }
 };
@@ -116,7 +163,8 @@ of temperature in °C and humidity in relative percentage.
 dht DHT;
 DHTRead dhtRead(8, DHT);
 SerialMonitorHandler serialMonitor;
-StateHandler stateHandler(serialMonitor);
+StackLight stackLight(12, 11, 10);
+StateHandler stateHandler(serialMonitor, stackLight);
 
 void setup() {
   Serial.begin(9600);
