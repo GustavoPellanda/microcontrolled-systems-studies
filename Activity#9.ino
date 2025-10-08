@@ -1,4 +1,5 @@
 #include <dht.h>
+#include <LiquidCrystal.h>
 
 /*
 The DHTRead class returns the temperature and humidity separately.
@@ -45,6 +46,46 @@ public:
 };
 
 /*
+Handles the LCD display operations:
+*/
+class LCDDisplay {
+private:
+  LiquidCrystal lcd;
+  const int columns = 16;
+  const int rows = 2;
+  
+public:
+  LCDDisplay(byte rs, byte en, byte d4, byte d5, byte d6, byte d7) 
+    : lcd(rs, en, d4, d5, d6, d7) {
+    lcd.begin(columns, rows);
+  }
+
+  void displayTemperatureHumidity(int temp, int humidity) {
+    lcd.clear();
+    
+    // First line: Temperature
+    lcd.setCursor(0, 0);
+    lcd.print("Temp: ");
+    lcd.print(temp);
+    lcd.print((char)223); // Degree symbol
+    lcd.print("C");
+    
+    // Second line: Humidity
+    lcd.setCursor(0, 1);
+    lcd.print("Humidity: ");
+    lcd.print(humidity);
+    lcd.print("%");
+  }
+
+  void displayState(const char* state) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("State: ");
+    lcd.print(state);
+  }
+};
+
+/*
 Handles the serial prints:
 */
 class SerialMonitorHandler {
@@ -70,7 +111,7 @@ public:
 };
 
 /*
-Handles which light should be on in the stacklight.
+Handles which light should be on in the stacklight:
 */
 class StackLight {
 private:
@@ -80,12 +121,6 @@ private:
 
 public:
   StackLight(byte r, byte y, byte g) : Rpin(r), Ypin(y), Gpin(g) {}
-
-  void begin() {
-    pinMode(Rpin, OUTPUT);
-    pinMode(Ypin, OUTPUT);
-    pinMode(Gpin, OUTPUT);
-  }
 
   void setRedLightOn() {
     digitalWrite(Ypin, LOW);
@@ -120,12 +155,14 @@ class StateHandler {
 private:
   SerialMonitorHandler &serialMonitor;
   StackLight &stackLight;
+  LCDDisplay &lcdDisplay;
 
 public:
-  StateHandler(SerialMonitorHandler &serialRef, StackLight &stackLightRef) : serialMonitor(serialRef), stackLight(stackLightRef) {}
+  StateHandler(SerialMonitorHandler &serialRef, StackLight &stackLightRef, LCDDisplay &lcdRef) 
+    : serialMonitor(serialRef), stackLight(stackLightRef), lcdDisplay(lcdRef) {}
 
   void analiseState(int temp, int humidity) {
-    if(temp >= 30) {
+    if(temp < 30) {
       redAlert();
       return;
     }
@@ -142,16 +179,19 @@ public:
   void greenOperation() {
     stackLight.setGreenLightOn();
     serialMonitor.printState(1);
+    lcdDisplay.displayState("Normal");
   }
 
   void yellowOperation() {
     stackLight.setYellowLightOn();
     serialMonitor.printState(2);
+    lcdDisplay.displayState("Warning");
   }
 
   void redAlert() {
     stackLight.setRedLightOn();
     serialMonitor.printState(3);
+    lcdDisplay.displayState("ALERT!");
   }
 };
 
@@ -164,7 +204,8 @@ dht DHT;
 DHTRead dhtRead(8, DHT);
 SerialMonitorHandler serialMonitor;
 StackLight stackLight(12, 11, 10);
-StateHandler stateHandler(serialMonitor, stackLight);
+LCDDisplay lcdDisplay(7, 6, 5, 4, 3, 2);
+StateHandler stateHandler(serialMonitor, stackLight, lcdDisplay);
 
 void setup() {
   Serial.begin(9600);
@@ -172,6 +213,9 @@ void setup() {
 
 void loop() {
   delay(2000);
-  stateHandler.analiseState(dhtRead.getTemperature(), dhtRead.getHumidity());
-  serialMonitor.printSensorValues(dhtRead.getTemperature(), dhtRead.getHumidity());
+  int temperature = dhtRead.getTemperature();
+  int humidity = dhtRead.getHumidity();
+  stateHandler.analiseState(temperature, humidity);
+  lcdDisplay.displayTemperatureHumidity(temperature, humidity);
+  serialMonitor.printSensorValues(temperature, humidity);
 }
