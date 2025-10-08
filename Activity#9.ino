@@ -162,7 +162,7 @@ public:
     : serialMonitor(serialRef), stackLight(stackLightRef), lcdDisplay(lcdRef) {}
 
   void analiseState(int temp, int humidity) {
-    if(temp < 30) {
+    if(temp >= 30) {
       redAlert();
       return;
     }
