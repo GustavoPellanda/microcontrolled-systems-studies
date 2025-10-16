@@ -1,3 +1,14 @@
+/*
+  This code creates a machine that changes states based on sensor readings.
+
+  I chose to design a system with two operational states — green and yellow —
+  and a red alert state, determined by temperature and humidity readings. 
+  The sensor data are displayed on an LCD screen, and each state is indicated 
+  by a corresponding LED in a stack light.
+
+  Author: Gustavo Pellanda / 2025
+*/
+
 #include <dht.h>
 #include <LiquidCrystal.h>
 
@@ -28,7 +39,8 @@ private:
   }
 
 public:
-  DHTRead(byte p, dht& dhtRef) : pin(p), sensor(dhtRef), temperature(0), humidity(0), lastReadTime(0) {}
+  DHTRead(byte p, dht& dhtRef) 
+  : pin(p), sensor(dhtRef), temperature(0), humidity(0), lastReadTime(0) {}
   
   int getTemperature() {
     if (shouldReadSensor()) {
@@ -120,7 +132,15 @@ private:
   const unsigned long blinkInterval = 500; // 500ms blink interval
 
 public:
-  StackLight(byte r, byte y, byte g) : Rpin(r), Ypin(y), Gpin(g) {}
+  StackLight(byte r, byte y, byte g) : Rpin(r), Ypin(y), Gpin(g) {
+    pinMode(Rpin, OUTPUT);
+    pinMode(Ypin, OUTPUT);
+    pinMode(Gpin, OUTPUT);
+
+    digitalWrite(Rpin, LOW);
+    digitalWrite(Ypin, LOW);
+    digitalWrite(Gpin, LOW);
+  }
 
   void setRedLightOn() {
     digitalWrite(Ypin, LOW);
@@ -212,10 +232,15 @@ void setup() {
 }
 
 void loop() {
-  delay(2000);
-  int temperature = dhtRead.getTemperature();
-  int humidity = dhtRead.getHumidity();
-  stateHandler.analiseState(temperature, humidity);
-  lcdDisplay.displayTemperatureHumidity(temperature, humidity);
-  serialMonitor.printSensorValues(temperature, humidity);
+  unsigned long currentMillis = millis();
+  static unsigned long lastSensorRead = 0;
+  if(currentMillis - lastSensorRead >= 2000) {
+    lastSensorRead = currentMillis;
+    
+    int temperature = dhtRead.getTemperature();
+    int humidity = dhtRead.getHumidity();
+    stateHandler.analiseState(temperature, humidity);
+    lcdDisplay.displayTemperatureHumidity(temperature, humidity);
+    serialMonitor.printSensorValues(temperature, humidity);
+  }
 }
